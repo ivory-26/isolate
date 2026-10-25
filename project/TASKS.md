@@ -16,11 +16,11 @@ One owner per task, explicit file ownership, dependencies, acceptance criteria, 
 ### Subtasks
 - [x] MVP-1a Sprint setup: git init, scaffold, deps, contracts, .env.example (orchestrator)
 - [x] MVP-1b Neon project creation + schema application + verification (orchestrator, MCP)
-- [ ] MVP-1c Backend implementation (backend agent)
-- [ ] MVP-1d UI page (UI agent)
-- [ ] MVP-1e Integration validation: generate-routes, typecheck, lint, bun test, build (orchestrator)
-- [ ] MVP-1f End-to-end smoke with real provider key (user-assisted: needs LLM_API_KEY in .env)
-- [ ] MVP-1g Docs handoff: README commands/troubleshooting, STATUS.md evidence (orchestrator)
+- [x] MVP-1c Backend implementation (backend agent)
+- [x] MVP-1d UI page (UI agent)
+- [x] MVP-1e Integration validation: generate-routes, typecheck, lint, bun test, build (orchestrator)
+- [x] MVP-1f End-to-end smoke with real provider key — production-build RPC: success (`succeeded`, 683 ms, verified in Neon), oversized-prompt rejection before model call, health check `{ok,db:true}`; ACP/A2A fact-checked as unnecessary for now
+- [x] MVP-1g Docs handoff: README commands/troubleshooting, STATUS.md evidence (orchestrator)
 
 ## Next (post-spike, not in scope)
 - Desktop/worker split, sandbox integration, GitHub integration, workflow editor — see ARCHITECTURE.md; start only after MVP-1 passes or blockers are documented.
