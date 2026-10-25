@@ -1,112 +1,124 @@
-# Autonomous DevSecOps Agent Platform
+# Isolate — Agent Platform (MVP spike)
 
 A model-agnostic engineering automation platform that accepts a software task, inspects a repository, plans and implements a change in an isolated cloud sandbox, runs tests and security checks, and prepares a reviewable GitHub pull request. Users can customize workflows visually and connect approved tools, MCP servers, skills, and business-specific actions.
 
-**Current architectural direction:** Bun + TypeScript, TanStack Start/Router/Query, Mastra agents and workflows, Neon PostgreSQL, a separate worker, and disposable cloud sandboxes. The initial product must prove one reliable end-to-end SDLC workflow before expanding the integration marketplace or multi-agent features.
+This repository currently contains the **MVP compatibility spike** defined in `SPEC.md`: one server-side Mastra agent call (OpenRouter/Groq), one persisted run record in Neon PostgreSQL, a minimal TanStack Start page, and a health check. The full architecture is described in [`ARCHITECTURE.md`](ARCHITECTURE.md) and comes only after this spike passes.
 
-## Core goals
-- Execute engineering tasks outside the web server in isolated environments.
-- Keep model providers replaceable behind a provider configuration/adapter boundary.
-- Use explicit workflows for planning, implementation, testing, review, approval, and pull-request creation.
-- Provide auditable runs, bounded retries, policy enforcement, and human approval for privileged actions.
-- Let users build versioned workflows with a visual editor.
-- Support controlled integrations through typed tools, native connectors, and MCP.
+## What the spike proves
+
+- **Bun + TanStack Start + Mastra + Neon PostgreSQL work together** on one machine.
+- A server-only `submitAgentRun` server function validates input (Zod), rate-limits (per-process sliding window), writes a `running` row to Neon, executes a Mastra agent (Groq or OpenRouter via the OpenAI-compatible model config), and writes a terminal status (`succeeded`/`failed`) with a sanitized error code.
+- The browser never sees provider keys, database credentials, stacks, or raw provider errors — only `{ ok, run }` / `{ ok: false, code, message }`.
+- Key files:
+  - `src/server/functions.ts` — the three server functions (`submitAgentRun`, `getRecentRuns`, `getHealth`)
+  - `src/server/agent.ts` — Mastra agent (`@mastra/core@1.79.0`, OpenAI-compatible model object)
+  - `src/server/db.ts` + `src/server/run-repository.ts` — postgres.js client + repository
+  - `db/migrations/0001_agent_smoke_test_runs.sql` — table + index (idempotent)
+  - `src/routes/index.tsx` — UI (input, loading/error states, result + run ID + status, history, DB indicator)
 
 ## Quickstart
 
 ### Prerequisites
-- Bun 1.x
-- Node.js 22 LTS available for compatibility with tools that require Node
-- Git
-- A Neon PostgreSQL database
-- A model-provider API key
-- A GitHub App or appropriately scoped GitHub credentials for development
-- A sandbox provider account/configuration
+- Bun 1.4+ (`bun --version`)
+- A Neon PostgreSQL database (free tier is fine)
+- An OpenRouter **or** Groq API key
 
-### Bootstrap
-Use the TanStack Start starter and add Mastra to the project. Confirm current CLI syntax against the official docs before running it, because generator options and package versions change.
-
-```bash
-# Create the TanStack Start application using the current official starter instructions.
-bun create @tanstack/start
-
-cd <created-project>
-
-# Add core runtime dependencies. Pin compatible versions after validating them together.
-bun add @mastra/core @mastra/libsql zod
-bun add @tanstack/react-query
-bun add -d mastra typescript
-```
-
-The database adapter shown above is an example, not the final Neon adapter choice. Before implementation, select and document the supported Mastra storage adapter and configure it for Neon/PostgreSQL. Do not add a second database just because a tutorial uses a different storage backend.
-
-If the current TanStack Start generator produces a different folder structure or command, follow its generated output and update this README and `AGENTS.md` to match. Do not blindly overwrite a working scaffold with a generic example.
-
-### Configure environment
-Create a local `.env` from `.env.example` manually. Never commit `.env` files.
-
-Expected configuration categories (use placeholders in `.env.example`):
-- `DATABASE_URL`: Neon connection string, preferably pooled for application traffic where appropriate.
-- `MODEL_PROVIDER` and provider-specific API key.
-- `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY`, and installation configuration, or another least-privilege GitHub authentication method.
-- Sandbox provider endpoint and credentials.
-- Public app URL and server-side session/auth settings.
-
-Do not use real secrets in docs, screenshots, tests, logs, fixtures, or issue descriptions.
-
-### Run locally
-Once the root scripts are implemented and verified:
+### 1. Install
 
 ```bash
 bun install
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Fill in `.env` (this file is git-ignored; never commit it):
+
+```ini
+DATABASE_URL=postgresql://<user>:<password>@<host-pooler>/<db>?sslmode=require
+MODEL_PROVIDER=groq            # groq | openrouter
+LLM_API_KEY=<your key>         # never leave real or fake keys in docs
+LLM_BASE_URL=                  # optional; sensible defaults per provider
+LLM_MODEL=llama-3.3-70b-versatile  # groq example; for openrouter try meta-llama/llama-3.3-70b-instruct
+APP_BASE_URL=http://localhost:3000
+```
+
+The pooled (`-pooler`) connection string from the Neon dashboard is recommended for local dev. Missing values fail **lazily and safely** — the app reports the missing variable *name* only, never its value.
+
+### 3. Create the table
+
+The schema is one idempotent script — run it once against your database:
+
+```bash
+psql "$DATABASE_URL" -f db/migrations/0001_agent_smoke_test_runs.sql
+```
+
+or paste the file into the Neon SQL console. Re-running it is a no-op (`IF NOT EXISTS`). (`gen_random_uuid()` is built in on Postgres 13+; for 12 run `CREATE EXTENSION IF NOT EXISTS pgcrypto;` first.)
+
+### 4. Run the app
+
+```bash
 bun run dev
-bun run dev:worker
 ```
 
-Run validation before opening a PR:
+Open http://localhost:3000, enter a prompt (e.g. `Explain why isolated execution is important for coding agents in two sentences.`), submit, and you should see the agent answer, a run ID, a status pill, and "Saved to Postgres". Reload the page — the run is in the history list (newest first).
+
+### Regenerating routes after file-based route changes
 
 ```bash
-bun run test
-bun run typecheck
-bun run lint
-bun run build
-bun run validate
+bun run generate-routes
 ```
 
-Only run scripts that actually exist in `package.json`. The `validate` script should run the repository's agreed quality gates and return a non-zero exit code if any gate fails.
+## Commands
 
-### Mastra Studio
-If Mastra Studio is configured for this repository, start it using the actual package script, for example:
+| Command | What it does |
+|---|---|
+| `bun run dev` | TanStack Start dev server on port 3000 |
+| `bun run test` | Bun's test runner (unit + contract + optional live-Neon integration tests) |
+| `bun run typecheck` | `tsc --noEmit` (strict) |
+| `bun run lint` | Biome lint |
+| `bun run format` | Biome format |
+| `bun run check` | Biome check (lint + format) |
+| `bun run build` | Production build to `dist/client` + `dist/server` |
+| `bun run validate` | All gates: biome check → typecheck → test → build |
 
-```bash
-bun run mastra:dev
+The repository's own integration test (SQL CRUD round-trip) runs automatically in `bun test` **when `DATABASE_URL` is set**; without it, that test is skipped and 24 unit/contract tests still run.
+
+## Verifying persistence
+
+```sql
+SELECT id, status, error_code, created_at, finished_at, duration_ms
+FROM agent_smoke_test_runs
+ORDER BY created_at DESC
+LIMIT 10;
 ```
 
-Studio is a development aid, not a production orchestration service. Keep it disabled or inaccessible in production unless a deliberate, authenticated deployment design is documented.
+(Free-tier Neon computes auto-suspend; the first connection after idle may fail once — retry.)
 
-## Product workflow
-1. A user selects a repository and submits a task.
-2. The control plane validates identity, repository access, policy, and budget.
-3. The worker claims a durable task and starts a disposable sandbox.
-4. Mastra runs the versioned SDLC workflow.
-5. Tools perform explicitly authorized repository, test, scan, and integration operations.
-6. The workflow records logs, artifacts, decisions, and bounded repair attempts.
-7. Required approval is collected before privileged actions.
-8. The system creates a pull request and reports the outcome.
+## Troubleshooting
 
-## Parallel development
-Use isolated Git worktrees for independent tasks. Every task needs an owner, a list of files/packages it owns, dependencies, acceptance criteria, and a Definition of Done. The integration owner resolves shared contracts and merges reviewed work. Never have two agents edit the same worktree concurrently.
+| Symptom | Cause | Fix |
+|---|---|---|
+| `MISSING_CONFIG`-style error naming a variable (name only) | `.env` incomplete | Fill the named variable and retry |
+| `DB_UNAVAILABLE` in the UI, DB indicator red | Wrong/misspelled `DATABASE_URL`, firewall, or cold Neon compute | Re-check the pooled URL; retry once after a cold start |
+| `AGENT_EXECUTION_FAILED` | Provider rejected the model name or key | Verify `LLM_MODEL` exists for your provider and `LLM_API_KEY` is valid; check the run row's `error_code` |
+| `RATE_LIMITED` | More than 10 submissions in a rolling minute (single process) | Wait ~60s |
+| First `bun test` Neon test fails with a socket error | Neon compute cold start mid-connection | Re-run `bun test` |
+| `bun run typecheck` errors after adding routes | Stale `routeTree.gen.ts` | `bun run generate-routes` |
 
-Project coordination records live in `project/`:
-- `TASKS.md`: task queue, ownership, dependencies, acceptance criteria, DoD.
-- `STATUS.md`: current WIP, recently completed work, blockers, next tasks.
-- `DECISIONS.md`: dated architectural and implementation decisions with rationale.
-- `CHALLENGES.md`: mistakes, failed approaches, root cause, fix, regression test, prevention.
+## What is intentionally out of scope
+
+Per `SPEC.md`: no sandboxes/VMs, no Git/GitHub integration, no multi-agent coordination, no visual workflow builder, no MCP marketplace, no RAG/embeddings/memory, no auth/multi-tenancy/billing, no Mastra storage adapter (a `@mastra/pg` evaluation is a post-spike item — see `project/DECISIONS.md`), no unbounded loops.
 
 ## Documentation
-- [Agent instructions](AGENTS.md)
-- [Architecture and system boundaries](ARCHITECTURE.md)
-- [Skills inventory and manual-install guidance](SKILLS.md)
 
-## Current status
-This repository starts as an architectural plan. Do not claim features are implemented until the code and validation evidence exist. Keep `project/STATUS.md` current and distinguish **planned**, **in progress**, **blocked**, and **verified complete**.
+- [SPEC — this MVP's contract](SPEC.md)
+- [Architecture (target system)](ARCHITECTURE.md)
+- [Agent instructions](AGENTS.md)
+- [Skills inventory](SKILLS.md)
+- [Task queue & ownership](project/TASKS.md)
+- [Current status + validation evidence](project/STATUS.md)
+- [Decisions](project/DECISIONS.md) · [Challenges](project/CHALLENGES.md)
