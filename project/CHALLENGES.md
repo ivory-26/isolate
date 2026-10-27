@@ -2,6 +2,13 @@
 
 Symptom / root cause / correction / prevention format for meaningful failures.
 
+## 2026-10-27 — Local MCP server spawn stalls on Windows (`mastra-docs` pending)
+- Symptom: `@mastra/mcp-docs-server` registered as `command: ["npx", "-y", "@mastra/mcp-docs-server@latest"]`ной stuck in `pending` in `opencode mcp list`; earlier direct-`npx` attempts logged `Request timed out` / module-resolution failures.
+- Root cause: on Windows, child-spawning `npx` without going through `cmd /c` does not resolve the `.cmd` shim reliably, and the `@latest` dist-tag slows the MCP handshake past the connect timeout.
+- Correction: register as `["cmd", "/c", "npx", "-y", "@mastra/mcp-docs-server@beta"]`; verified `mcp connected` with 16 tools.
+- Regression test: `opencode mcp list` must show the server `connected`; a tool call (e.g. course status) must answer.
+- Prevention: for local MCPs on Windows, always wrap node-based commands with `cmd /c`; pin a dist-tag known to handshake quickly; keep tokens out of this config entirely (OAuth/env only) — see the leaked-token entry above.
+
 ## 2026-10-27 — Bearer token in `opencode.json` was committed and pushed
 - Symptom: project-local OpenCode config file containing a bearer token entered git history at `bc48b9d` and was force-served on GitHub (`origin/main`).
 - Root cause: `opencode.json` is project-local tooling config and was never ignore-listed; no pre-commit secret scan.
