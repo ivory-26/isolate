@@ -2,6 +2,13 @@
 
 Symptom / root cause / correction / prevention format for meaningful failures.
 
+## 2026-10-27 — Bearer token in `opencode.json` was committed and pushed
+- Symptom: project-local OpenCode config file containing a bearer token entered git history at `bc48b9d` and was force-served on GitHub (`origin/main`).
+- Root cause: `opencode.json` is project-local tooling config and was never ignore-listed; no pre-commit secret scan.
+- Correction: rewrote history with `git filter-repo --invert-paths --path opencode.json` (backup bundle kept at `C:\Users\Sahil\AppData\Local\Temp\opencode\isolate-pre-rewrite-backup.bdl` — delete after token rotation), force-pushed `origin/main`, added `opencode.json(c)` to `.gitignore` (commit `5b8d342`).
+- Regression test: `git log --all -- opencode.json` returns empty; repo grep scripts should treat `opencode.json*` like secrets-bearing files.
+- Prevention: **rotate the token immediately — exposure on GitHub means it must be considered compromised regardless of repo visibility**. For future config, OpenCode supports env substitution (`{env:VAR}`) so tokens never reside in committed config. Consider a pre-commit secret scanner (e.g. gitleaks) in CI. GitHub may retain unreachable objects and forks for a time; rotation is the only reliable fix.
+
 ## 2026-10-25 — Scaffold merge wiped the first copy of the template
 - Symptom: after scaffolding into `scaffold-tmp/` and copying to repo root, only hidden files (`.gitignore`, `.cta.json`, `.vscode/`) landed; `package.json`, `src/`, configs were missing.
 - Root cause: a PowerShell `Copy-Item … --Exclude s*` call failed on argument position (--Exclude is not positional there); because statements after it still ran, the trailing `Remove-Item scaffold-tmp` deleted the template before the real copy happened.
