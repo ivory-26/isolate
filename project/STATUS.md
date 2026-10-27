@@ -1,6 +1,13 @@
 # Status
 
-Last updated: 2026-10-25 (MVP spike work session)
+Last updated: 2026-10-27 (parallel sprint session — platform phases 1–4)
+
+## Current: 2-lane sprint in flight (6 parallel agent sessions)
+
+- Session/group A: Sprint A — Foundation & Data Plane (`task/sa1-shared`, `task/sa2-db`)
+- Session/group B: Sprint B — Runtime & Orchestration (`task/sb1-worker`, `task/sb2-mastra`, `task/sb3-wf-schema`, `task/sb4-integrations`)
+- Coordinator pre-commit (this session, on `main`): monorepo restructure (apps/web, apps/worker, packages/*), frozen cross-package contracts, roots-only coordinators, CI workflow. Gates at commit time: biome ✅ · typecheck 7/7 ✅ · bun test 28 pass/0 fail ✅ · build ✅.
+- Anti-deadlock design: distinct worktree + branch per agent; agents forbidden from root files, lockfile, `project/*` and cross-package edits; contract-first; all merges by coordinator only. Known limitation (see CHALLENGES 2026-10-27): agent sessions cannot spawn further subagents — each sprint "session" is a coordinated group of sibling sessions under lane badges `task/sa*` / `task/sb*`, with the coordinator acting as the single cross-lane integrator.
 
 ## Status: MVP-1 verified complete
 

@@ -2,6 +2,13 @@
 
 Symptom / root cause / correction / prevention format for meaningful failures.
 
+## 2026-10-27 — OpenCode subagent nesting is one level deep; "session with own swarm" cannot be literal
+- Symptom: requested topology was 2 top-level sessions, each spawning its own subagent swarm. A diagnostic probe session (tool inventory check) reported NO `subagent` tool in child sessions — only edit/glob/grep/read/shell/skill/webfetch/websearch/write/execute + MCP. No local OpenCode HTTP server existed (ports 4096/3456/4000/5123/8787 closed) to create extra top-level sessions, and no `opencode.session_create` tool exists in the catalog.
+- Root cause: OpenCode child sessions run a reduced toolset — spawning is a coordinator-level capability, not a nested-agent capability.
+- Correction: two sprint LANES are realized as coordinated groups of sibling agent sessions (`task/sa*` under Sprint A, `task/sb*` under Sprint B), each with its own worktree/branch/ownership, spawned and steered by a single top-level coordinator session. Lane integration branches (`sprint/a-foundation`, `sprint/b-runtime`) exist for later grouped merge. Parallelism is unaffected (6 concurrent agents); only the hierarchy collapsed one level.
+- Regression test: before planning hierarchical agent swarms, probe a child session's tool inventory; verify `subagent` availability instead of assuming.
+- Prevention: treat tool capability inheritance as part of swarm design (record in `project/DECISIONS.md`); prefer flat sibling swarms with a single integrator when nesting is unavailable. If literal 2-parent sessions with own swarms is required later, run a persistent `opencode serve` HTTP server and drive sessions via its session API.
+
 ## 2026-10-27 — Local MCP server spawn stalls on Windows (`mastra-docs` pending)
 - Symptom: `@mastra/mcp-docs-server` registered as `command: ["npx", "-y", "@mastra/mcp-docs-server@latest"]`ной stuck in `pending` in `opencode mcp list`; earlier direct-`npx` attempts logged `Request timed out` / module-resolution failures.
 - Root cause: on Windows, child-spawning `npx` without going through `cmd /c` does not resolve the `.cmd` shim reliably, and the `@latest` dist-tag slows the MCP handshake past the connect timeout.

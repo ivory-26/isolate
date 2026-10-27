@@ -4,7 +4,18 @@
   "workspaces": {
     "": {
       "name": "isolate-mvp",
+      "devDependencies": {
+        "@biomejs/biome": "2.4.5",
+        "bun-types": "^1.4.4",
+        "typescript": "^6.0.2",
+      },
+    },
+    "apps/web": {
+      "name": "@isolate/web",
+      "version": "0.1.0",
       "dependencies": {
+        "@isolate/db": "workspace:*",
+        "@isolate/shared": "workspace:*",
         "@mastra/core": "^1.79.0",
         "@tailwindcss/vite": "^4.1.18",
         "@tanstack/react-devtools": "0.10.13",
@@ -18,16 +29,65 @@
         "zod": "^4.6.7",
       },
       "devDependencies": {
-        "@biomejs/biome": "2.4.5",
         "@tanstack/devtools-vite": "0.8.5",
         "@tanstack/router-cli": "^1.132.0",
+        "@tanstack/router-core": "1.171.39",
         "@types/node": "^22.10.2",
         "@types/react": "^19.2.0",
         "@types/react-dom": "^19.2.0",
         "@vitejs/plugin-react": "^6.0.1",
-        "bun-types": "^1.4.4",
-        "typescript": "^6.0.2",
+        "seroval": "^1.6.7",
         "vite": "^8.0.0",
+      },
+    },
+    "apps/worker": {
+      "name": "@isolate/worker",
+      "version": "0.1.0",
+      "dependencies": {
+        "@isolate/db": "workspace:*",
+        "@isolate/shared": "workspace:*",
+        "zod": "^4.6.7",
+      },
+    },
+    "packages/db": {
+      "name": "@isolate/db",
+      "version": "0.1.0",
+      "dependencies": {
+        "@isolate/shared": "workspace:*",
+        "postgres": "^3.4.9",
+        "zod": "^4.6.7",
+      },
+    },
+    "packages/integrations": {
+      "name": "@isolate/integrations",
+      "version": "0.1.0",
+      "dependencies": {
+        "@isolate/shared": "workspace:*",
+        "zod": "^4.6.7",
+      },
+    },
+    "packages/mastra": {
+      "name": "@isolate/mastra",
+      "version": "0.1.0",
+      "dependencies": {
+        "@isolate/shared": "workspace:*",
+        "@mastra/core": "^1.79.0",
+        "zod": "^4.6.7",
+      },
+    },
+    "packages/shared": {
+      "name": "@isolate/shared",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "^4.6.7",
+      },
+    },
+    "packages/workflow-schema": {
+      "name": "@isolate/workflow-schema",
+      "version": "0.1.0",
+      "dependencies": {
+        "@isolate/shared": "workspace:*",
+        "zod": "^4.6.7",
       },
     },
   },
@@ -109,6 +169,20 @@
     "@hono/standard-validator": ["@hono/standard-validator@0.4.0", "", { "peerDependencies": { "@standard-schema/spec": "^1.0.0", "hono": ">=4.11.2" } }, "sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw=="],
 
     "@isaacs/ttlcache": ["@isaacs/ttlcache@2.1.5", "", {}, "sha512-VwGZqqjAWPICTmxUZnbpEfO60LhPWzquik+bmyXGY7pYRn6diEvCI5i6Ca+J6o2y4vS73HrpuMTo2dOvUevH8w=="],
+
+    "@isolate/db": ["@isolate/db@workspace:packages/db"],
+
+    "@isolate/integrations": ["@isolate/integrations@workspace:packages/integrations"],
+
+    "@isolate/mastra": ["@isolate/mastra@workspace:packages/mastra"],
+
+    "@isolate/shared": ["@isolate/shared@workspace:packages/shared"],
+
+    "@isolate/web": ["@isolate/web@workspace:apps/web"],
+
+    "@isolate/worker": ["@isolate/worker@workspace:apps/worker"],
+
+    "@isolate/workflow-schema": ["@isolate/workflow-schema@workspace:packages/workflow-schema"],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 

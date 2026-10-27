@@ -22,5 +22,55 @@ One owner per task, explicit file ownership, dependencies, acceptance criteria, 
 - [x] MVP-1f End-to-end smoke with real provider key — production-build RPC: success (`succeeded`, 683 ms, verified in Neon), oversized-prompt rejection before model call, health check `{ok,db:true}`; ACP/A2A fact-checked as unnecessary for now
 - [x] MVP-1g Docs handoff: README commands/troubleshooting, STATUS.md evidence (orchestrator)
 
-## Next (post-spike, not in scope)
-- Desktop/worker split, sandbox integration, GitHub integration, workflow editor — see ARCHITECTURE.md; start only after MVP-1 passes or blockers are documented.
+## Sprint A — Foundation & Data Plane (`sprint/a-foundation`) — active
+- Lane brief: `project/lane-a/BRIEF.md` (read-only for agents).
+- Contracts: frozen interface surface committed by coordinator (`packages/shared`, `packages/db` interfaces).
+
+### SA1 — Implement `@isolate/shared`
+- Owner: agent session `task/sa1-shared` · Worktree: `../worktrees/sa1-shared` · Branch: `task/sa1-shared`
+- File ownership: `packages/shared/**` only.
+- Dependencies: none (contracts pre-committed).
+- Acceptance criteria + DoD: brief §Task A1 — new schemas + deep-redaction compile, scoped gates green (biome/tsc/bun test), per-file challenge notes in final report, no files outside ownership touched.
+- Status: in progress
+
+### SA2 — Implement `@isolate/db`
+- Owner: agent session `task/sa2-db` · Worktree: `../worktrees/sa2-db` · Branch: `task/sa2-db`
+- File ownership: `packages/db/**` only.
+- Dependencies: SA1 contracts (frozen, already on branch).
+- Acceptance criteria + DoD: brief §Task A2 — migration 0002 + all six repositories + atomic-claim queue semantics + payload-bound approvals, tests skip-clean without DATABASE_URL, scoped gates green.
+- Status: in progress
+
+## Sprint B — Runtime & Orchestration Plane (`sprint/b-runtime`) — active
+- Lane brief: `project/lane-b/BRIEF.md`.
+- Concurrent-dependency rule: B lane compiles against packages/db INTERFACES ONLY; no concrete @isolate/db implementations exist on these branches yet.
+
+### SB1 — Durable worker loop (`apps/worker`)
+- Owner: agent session `task/sb1-worker` · Worktree: `../worktrees/sb1-worker` · Branch: `task/sb1-worker`
+- File ownership: `apps/worker/src/**` only.
+- DoD: brief §Task B1 (claim/heartbeat/ack/fail lifecycle + reapers + graceful stop + in-memory queue tests).
+- Status: in progress
+
+### SB2 — Mastra SDLC workflow + agent (`packages/mastra`)
+- Owner: agent session `task/sb2-mastra` · Worktree: `../worktrees/sb2-mastra` · Branch: `task/sb2-mastra`
+- File ownership: `packages/mastra/src/**` only.
+- DoD: brief §Task B2 (installed-d.ts verification, bounded workflow with suspend/resume + repair budget, policy-gated tools, fake model tests).
+- Status: in progress
+
+### SB3 — Workflow registry/validation/compiler (`packages/workflow-schema`)
+- Owner: agent session `task/sb3-wf-schema` · Worktree: `../worktrees/sb3-wf-schema` · Branch: `task/sb3-wf-schema`
+- File ownership: `packages/workflow-schema/src/**` only.
+- DoD: brief §Task B3 (per-type Zod configs, full validator, deterministic compiler, no dynamic codegen, tests).
+- Status: in progress
+
+### SB4 — GitHub connector foundations (`packages/integrations`)
+- Owner: agent session `task/sb4-integrations` · Worktree: `../worktrees/sb4-integrations` · Branch: `task/sb4-integrations`
+- File ownership: `packages/integrations/src/**` only.
+- DoD: brief §Task B4 (fetch-based PR creator, redaction test, audit dependency injection, mocked tests).
+- Status: in progress
+
+## Wave 2 — Integration & validation (coordinator, after both lanes report done)
+- Merge `task/*` → `sprint/a-foundation` + `sprint/b-runtime` → `main` via integration worktree; resolve conflicts centrally; run full `bun run validate` + integration DoD audit; apply migration 0002 to Neon; spawn QA validation agent; update ARCHITECTURE/STATUS/CHALLENGES; verify CI green on the pushed commit.
+- Status: planned
+
+## Next (post-wave-2, not in scope)
+- Visual workflow editor UI (phase 6), sandbox execution plane (phase 5), auth/tenancy (phase 7) — see ARCHITECTURE.md.

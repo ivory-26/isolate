@@ -2,6 +2,21 @@
 
 Dated, one entry per decision. Format: date — decision — rationale — alternatives rejected.
 
+## 2026-10-27 — Phase-1 monorepo skeleton + contracts-first worktree swarm
+- Decision: restructure the spike into Bun workspaces (`apps/web`, `apps/worker`, `packages/{shared,db,mastra,workflow-schema,integrations}`) in ONE coordinator commit on `main` that also lands every cross-package TS contract. All sprint agents branch from that commit and are forbidden from touching root files (`package.json`, `bun.lock`, root `tsconfig*`/`biome.json`), `project/*` root docs, `.github/*`, and each other's packages.
+- Rationale: root-config/lockfile edits are the only shared-with-every-worktree files; centralizing them eliminates the merge-deadlock class entirely. Contracts-first is the proven MVP-1 technique applied at cross-package scale.
+- Alternatives rejected: (a) agents creating their own package skeletons — high lockfile-conflict risk; (b) single shared worktree — violates the no-concurrent-writers rule.
+
+## 2026-10-27 — Workspace tooling: Bun workspaces + per-project tsc via driver script
+- Decision: `workspaces: ["apps/*","packages/*"]`; each project keeps its own tsconfig extending `tsconfig.base.json` (no composite/references); `typecheck` iterates projects via `scripts/typecheck-all.ts`; root scripts `cd` into apps; `bun test` at root discovers all workspace tests; live-DB integration tests skip without `DATABASE_URL`.
+- Rationale: zero new tooling; preserves the strict, noNonEmit setup verified in MVP-1; avoids the composite/emit pitfalls of project references.
+- Alternatives rejected: turborepo/nx — unnecessary for 7 projects; TS project references — composite mode conflicts with noEmit-typecheck-only goal.
+
+## 2026-10-27 — CI pipeline: GitHub Actions + advisory gitleaks
+- Decision: `.github/workflows/ci.yml` runs lint → typecheck-all → test → build with frozen lockfile on every PR/push to `main`; gitleaks secret-scan runs `continue-on-error` initially.
+- Rationale: the leaked-token incident (2026-10-27) demands automated secret scanning; advisory mode avoids blocking on `.env.example` false positives until reviewed.
+- Alternatives rejected: Block merge with gitleaks from day one without verifying scan noise first — would break the sprint on unknown findings.
+
 ## 2026-10-25 — MVP spike scope fixed by SPEC.md
 - Decision: implement only the compatibility spike in `SPEC.md` (one Mastra agent call, one persisted run row, one TanStack page, health check, tests). Everything in the spec's "Explicitly out of scope" section stays out.
 - Rationale: prove Bun + TanStack Start + Mastra + Neon work together before any product architecture.
